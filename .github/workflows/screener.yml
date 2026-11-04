@@ -1,0 +1,58 @@
+name: Run screener
+
+# Manual only: open the Actions tab (or the GitHub mobile app), pick "Run screener", tap Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      min_market_cap:
+        description: "Minimum market cap in USD for results.csv (blank = no cutoff, e.g. 1e9)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Run screener
+        env:
+          MIN_CAP: ${{ inputs.min_market_cap }}
+        run: |
+          if [ -n "$MIN_CAP" ]; then
+            python screener.py --min-market-cap "$MIN_CAP"
+          else
+            python screener.py
+          fi
+
+      - name: Assemble site
+        run: |
+          mkdir _site
+          cp results.html _site/index.html
+          cp results.csv _site/results.csv
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

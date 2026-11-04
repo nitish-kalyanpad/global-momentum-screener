@@ -1,0 +1,310 @@
+<title>Global Momentum Screen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one dense screener table, 50 rows per page, controls above, summary line between. */
+:root {
+  --bg: #0d1117;
+  --panel: #131922;
+  --row-alt: #10151d;
+  --row-hover: #1a2230;
+  --line: #222b38;
+  --fg: #d5dce6;
+  --muted: #7b8799;
+  --link: #4ea1ff;
+  --up: #3fcf72;
+  --up-bar: rgba(63, 207, 114, 0.16);
+  --down: #ef5e5e;
+  --focus: #4ea1ff;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f5f8; --panel: #ffffff; --row-alt: #f8fafc; --row-hover: #e9eef5; --line: #d9e0ea;
+    --fg: #1b2430; --muted: #607085; --link: #1262c4; --up: #11803f; --up-bar: rgba(17, 128, 63, 0.14);
+    --down: #c2312f; --focus: #1262c4; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f3f5f8; --panel: #ffffff; --row-alt: #f8fafc; --row-hover: #e9eef5; --line: #d9e0ea;
+  --fg: #1b2430; --muted: #607085; --link: #1262c4; --up: #11803f; --up-bar: rgba(17, 128, 63, 0.14);
+  --down: #c2312f; --focus: #1262c4; color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.4 var(--font-body);
+  padding-block: 16px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1480px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 24px; }
+.top h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: 0.01em; text-wrap: balance; }
+.rules { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+.rules b { color: var(--fg); font-weight: 500; font-family: var(--font-num); }
+.asof { color: var(--muted); font-size: 12px; font-family: var(--font-num); }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bar .count { font-family: var(--font-num); color: var(--muted); margin-right: auto; min-width: 0; }
+.bar .count b { color: var(--fg); font-weight: 500; }
+label.ctl { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+select, input[type="search"], input[type="number"], button {
+  font: inherit; color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 4px; height: 28px; padding: 0 8px;
+}
+input[type="search"] { width: 150px; }
+select { padding-right: 4px; }
+button { cursor: pointer; padding: 0 10px; }
+button:hover:not(:disabled) { background: var(--row-hover); }
+button:disabled { opacity: 0.4; cursor: default; }
+:is(select, input, button, a, th):focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
+table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+th, td { padding: 0 10px; height: 26px; text-align: left; }
+thead th {
+  height: 32px; color: var(--muted); font-weight: 500; font-size: 12px; cursor: pointer; user-select: none;
+  border-bottom: 1px solid var(--line); background: var(--panel);
+}
+thead th:hover { color: var(--fg); }
+thead th[aria-sort] { color: var(--fg); }
+thead th .arr { display: inline-block; width: 10px; color: var(--link); }
+tbody tr:nth-child(even) { background: var(--row-alt); }
+tbody tr:hover { background: var(--row-hover); }
+.n { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.dim { color: var(--muted); }
+.cur { color: var(--muted); font-size: 11px; margin-left: 4px; }
+td.co { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+td.sec, td.ind { max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+a.tk { color: var(--link); text-decoration: none; font-weight: 500; }
+a.tk:hover { text-decoration: underline; }
+.exch { color: var(--muted); font-size: 11px; margin-right: 6px; font-family: var(--font-num); }
+.pf { color: var(--up); }
+.neg { color: var(--down); }
+.empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+
+.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.pager button.cur-page { border-color: var(--link); color: var(--link); }
+.pager .goto { display: flex; align-items: center; gap: 6px; margin-left: 12px; color: var(--muted); }
+.pager input[type="number"] { width: 64px; }
+.pn { display: flex; align-items: center; gap: 4px; font-family: var(--font-num); color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Global Momentum Screen</h1>
+      <p class="rules" id="rules"></p>
+    </div>
+    <div class="asof" id="asof"></div>
+  </div>
+
+  <div class="bar">
+    <div class="count" id="count" aria-live="polite"></div>
+    <label class="ctl" for="mc">Market cap
+      <select id="mc">
+        <option value="0">All</option>
+        <option value="100000000">≥ $100M</option>
+        <option value="300000000">≥ $300M</option>
+        <option value="1000000000" selected>≥ $1B</option>
+        <option value="10000000000">≥ $10B</option>
+        <option value="100000000000">≥ $100B</option>
+      </select>
+    </label>
+    <label class="ctl" for="ex">Exchange
+      <select id="ex"><option value="">All</option></select>
+    </label>
+    <label class="ctl" for="cn">Country
+      <select id="cn"><option value="">All</option></select>
+    </label>
+    <input type="search" id="q" placeholder="Search" aria-label="Search ticker or company">
+    <div class="pn">
+      <button id="prev" aria-label="Previous page">←</button>
+      <span id="pos">1 / 1</span>
+      <button id="next" aria-label="Next page">→</button>
+    </div>
+  </div>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+
+  <div class="pager" id="pager"></div>
+</div>
+
+<script>
+const DATA = __DATA__;
+const PAGE = 50;
+const COLS = [
+  { k: 'no', label: 'No.', cls: 'n', sort: false },
+  { k: 't', label: 'Ticker', sort: 'str' },
+  { k: 'co', label: 'Company', sort: 'str' },
+  { k: 'se', label: 'Sector', sort: 'str' },
+  { k: 'in', label: 'Industry', sort: 'str' },
+  { k: 'ct', label: 'Country', sort: 'str' },
+  { k: 'mc', label: 'Market Cap', cls: 'n', sort: 'num', tip: 'Market capitalisation in USD' },
+  { k: 'px', label: 'Price', cls: 'n', sort: 'num', tip: 'Last close, in the listing currency' },
+  { k: 'pf', label: '1M Perf', cls: 'n', sort: 'num', tip: 'Performance over the last month (Perf.1M)' },
+  { k: 'hi', label: 'Below 52W High', cls: 'n', sort: 'num', tip: '(52-week high / close − 1) × 100' },
+  { k: 's20', label: 'vs SMA20', cls: 'n', sort: 'num', tip: 'Close above the 20-day SMA, in %' },
+  { k: 's200', label: 'vs SMA200', cls: 'n', sort: 'num', tip: 'Close above the 200-day SMA, in %' },
+  { k: 'vol', label: 'Volume', cls: 'n', sort: 'num' },
+];
+const ROWS = DATA.rows;
+const $ = id => document.getElementById(id);
+const state = { key: 'pf', dir: -1, mc: 1e9, ex: '', cn: '', q: '', page: 1 };
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const isNum = v => typeof v === 'number' && isFinite(v);
+const fmtInt = v => isNum(v) ? Math.round(v).toLocaleString('en-US') : '–';
+function fmtCap(v) {
+  if (!isNum(v)) return '–';
+  const u = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
+  for (const [d, s] of u) if (v >= d) return (v / d).toFixed(2) + s;
+  return v.toFixed(0);
+}
+function fmtPx(v) {
+  if (!isNum(v)) return '–';
+  if (v >= 1) return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return v.toLocaleString('en-US', { maximumSignificantDigits: 3, maximumFractionDigits: 6 });
+}
+function fmtPct(v, signed) {
+  if (!isNum(v)) return '–';
+  const a = Math.abs(v), d = a >= 1000 ? 0 : a >= 100 ? 1 : 2;
+  const s = v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  return (signed && v > 0 ? '+' : '') + s + '%';
+}
+
+function filtered() {
+  const q = state.q.trim().toLowerCase();
+  return ROWS.filter(r =>
+    (state.mc === 0 || (isNum(r.mc) && r.mc >= state.mc)) &&
+    (!state.ex || r.ex === state.ex) &&
+    (!state.cn || r.ct === state.cn) &&
+    (!q || r.t.toLowerCase().includes(q) || (r.co || '').toLowerCase().includes(q))
+  );
+}
+function sorted(list) {
+  const c = COLS.find(x => x.k === state.key), d = state.dir;
+  return list.slice().sort((a, b) => {
+    const x = a[state.key], y = b[state.key];
+    const xn = c.sort === 'num' ? !isNum(x) : x == null, yn = c.sort === 'num' ? !isNum(y) : y == null;
+    if (xn || yn) return xn === yn ? 0 : xn ? 1 : -1;
+    return (c.sort === 'num' ? x - y : String(x).localeCompare(String(y))) * d;
+  });
+}
+
+function renderHead() {
+  $('head').innerHTML = COLS.map(c => {
+    const on = state.key === c.k;
+    const arr = on ? (state.dir < 0 ? '▼' : '▲') : '';
+    const cls = c.cls ? ` class="${c.cls}"` : '';
+    const sortAttr = c.sort ? ` data-k="${c.k}" tabindex="0"` : '';
+    const aria = on ? ` aria-sort="${state.dir < 0 ? 'descending' : 'ascending'}"` : '';
+    const tip = c.tip ? ` title="${esc(c.tip)}"` : '';
+    return `<th${cls}${sortAttr}${aria}${tip}>${c.label}<span class="arr">${arr}</span></th>`;
+  }).join('');
+}
+
+function render() {
+  const list = sorted(filtered());
+  const pages = Math.max(1, Math.ceil(list.length / PAGE));
+  state.page = Math.min(Math.max(1, state.page), pages);
+  const start = (state.page - 1) * PAGE;
+  const slice = list.slice(start, start + PAGE);
+
+  renderHead();
+  $('body').innerHTML = slice.length ? slice.map((r, i) => {
+    const [exch, sym] = r.t.split(':');
+    const w = isNum(r.pf) ? Math.min(Math.max(r.pf, 0), 150) / 150 * 100 : 0;
+    const link = `https://www.tradingview.com/symbols/${encodeURIComponent(exch)}-${encodeURIComponent(sym)}/`;
+    const cell = v => `<td class="n ${isNum(v) && v < 0 ? 'neg' : ''}">${fmtPct(v, true)}</td>`;
+    return `<tr>
+      <td class="n dim">${start + i + 1}</td>
+      <td><span class="exch">${esc(exch)}</span><a class="tk" href="${link}" target="_blank" rel="noopener noreferrer">${esc(sym)}</a></td>
+      <td class="co" title="${esc(r.co)}">${esc(r.co)}</td>
+      <td class="sec dim">${esc(r.se) || '–'}</td>
+      <td class="ind dim">${esc(r.in) || '–'}</td>
+      <td class="dim">${esc(r.ct) || '–'}</td>
+      <td class="n">${fmtCap(r.mc)}</td>
+      <td class="n">${fmtPx(r.px)}<span class="cur">${esc(r.cur)}</span></td>
+      <td class="n pf" style="background:linear-gradient(270deg,var(--up-bar) ${w.toFixed(1)}%,transparent ${w.toFixed(1)}%)">${fmtPct(r.pf, true)}</td>
+      <td class="n">${fmtPct(r.hi, false)}</td>
+      ${cell(r.s20)}${cell(r.s200)}
+      <td class="n">${fmtInt(r.vol)}</td>
+    </tr>`;
+  }).join('') : `<tr><td class="empty" colspan="${COLS.length}">No stocks match these filters. Lower the market cap or clear the search.</td></tr>`;
+
+  const pf = list.map(r => r.pf).filter(isNum).sort((a, b) => a - b);
+  const med = pf.length ? pf[Math.floor(pf.length / 2)] : null;
+  const nEx = new Set(list.map(r => r.ex)).size;
+  $('count').innerHTML = `<b>#${list.length ? start + 1 : 0}</b> / <b>${list.length.toLocaleString('en-US')}</b> shown · ${ROWS.length.toLocaleString('en-US')} total · ${nEx} exchanges · median 1M <b>${fmtPct(med, true)}</b>`;
+  $('pos').textContent = `${state.page} / ${pages}`;
+  $('prev').disabled = state.page <= 1;
+  $('next').disabled = state.page >= pages;
+
+  const nums = [];
+  for (let p = 1; p <= pages; p++) if (p === 1 || p === pages || Math.abs(p - state.page) <= 2) nums.push(p);
+  let html = '', last = 0;
+  for (const p of nums) {
+    if (p - last > 1) html += '<span class="dim">…</span>';
+    html += `<button data-p="${p}" class="${p === state.page ? 'cur-page' : ''}" ${p === state.page ? 'aria-current="page"' : ''}>${p}</button>`;
+    last = p;
+  }
+  if (pages > 1) html += `<label class="goto" for="goto">Go to <input type="number" id="goto" min="1" max="${pages}" value="${state.page}"></label>`;
+  $('pager').innerHTML = html;
+}
+
+function init() {
+  const m = DATA.meta;
+  $('rules').innerHTML =
+    `Within <b>${m.max_below_high}%</b> of 52-week high · 1M performance &gt; <b>${m.min_perf}%</b> · volume &gt; <b>${m.min_volume.toLocaleString('en-US')}</b> · close &gt; <b>SMA20</b> and <b>SMA200</b>`;
+  $('asof').textContent = `Data pulled ${m.generated}`;
+  const counts = {};
+  ROWS.forEach(r => counts[r.ex] = (counts[r.ex] || 0) + 1);
+  Object.keys(counts).sort((a, b) => counts[b] - counts[a]).forEach(e => {
+    const o = document.createElement('option'); o.value = e; o.textContent = `${e} (${counts[e]})`; $('ex').appendChild(o);
+  });
+  const cc = {};
+  ROWS.forEach(r => { if (r.ct) cc[r.ct] = (cc[r.ct] || 0) + 1; });
+  Object.keys(cc).sort((a, b) => cc[b] - cc[a] || a.localeCompare(b)).forEach(c => {
+    const o = document.createElement('option'); o.value = c; o.textContent = `${c} (${cc[c]})`; $('cn').appendChild(o);
+  });
+  if (m.min_market_cap != null) {
+    const sel = $('mc'); const v = String(m.min_market_cap);
+    if (![...sel.options].some(o => o.value === v)) {
+      const o = document.createElement('option'); o.value = v; o.textContent = `≥ $${fmtCap(m.min_market_cap)}`; sel.appendChild(o);
+    }
+    sel.value = v; state.mc = m.min_market_cap;
+  }
+
+  $('mc').addEventListener('change', e => { state.mc = +e.target.value; state.page = 1; render(); });
+  $('ex').addEventListener('change', e => { state.ex = e.target.value; state.page = 1; render(); });
+  $('cn').addEventListener('change', e => { state.cn = e.target.value; state.page = 1; render(); });
+  $('q').addEventListener('input', e => { state.q = e.target.value; state.page = 1; render(); });
+  $('prev').addEventListener('click', () => { state.page--; render(); });
+  $('next').addEventListener('click', () => { state.page++; render(); });
+  $('pager').addEventListener('click', e => { const b = e.target.closest('button[data-p]'); if (b) { state.page = +b.dataset.p; render(); } });
+  $('pager').addEventListener('change', e => { if (e.target.id === 'goto') { state.page = +e.target.value || 1; render(); } });
+  const sortBy = th => {
+    if (!th || !th.dataset.k) return;
+    const k = th.dataset.k, c = COLS.find(x => x.k === k);
+    if (state.key === k) state.dir *= -1; else { state.key = k; state.dir = c.sort === 'num' ? -1 : 1; }
+    state.page = 1; render();
+  };
+  $('head').addEventListener('click', e => sortBy(e.target.closest('th')));
+  $('head').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sortBy(e.target.closest('th')); } });
+  render();
+}
+init();
+</script>
