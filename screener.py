@@ -33,8 +33,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -183,7 +184,12 @@ def render_html(df: pd.DataFrame, min_market_cap: float | None) -> str:
         "min_perf": MIN_1M_PERF_PCT,
         "min_volume": MIN_VOLUME,
         "min_market_cap": min_market_cap if min_market_cap is not None else 1e9,
-        "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        # UTC with a Z suffix; the page shows it in the viewer's own time zone
+        "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        # Set by GitHub Actions. The page shows its Run button only when these are present,
+        # so local copies and the Claude artifact (which can't reach GitHub) don't get one.
+        "repo": os.environ.get("GITHUB_REPOSITORY"),
+        "ref": os.environ.get("GITHUB_REF_NAME") or "main",
     }
     payload = '{"meta": %s, "rows": %s}' % (json.dumps(meta), view.to_json(orient="records"))
     payload = payload.replace("</", "<\\/")  # keep the JSON from closing the <script> tag

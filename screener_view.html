@@ -16,6 +16,7 @@
   --up-bar: rgba(63, 207, 114, 0.16);
   --down: #ef5e5e;
   --focus: #4ea1ff;
+  --on-accent: #06101c;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
   color-scheme: dark;
@@ -24,13 +25,13 @@
   :root:not([data-theme="dark"]) {
     --bg: #f3f5f8; --panel: #ffffff; --row-alt: #f8fafc; --row-hover: #e9eef5; --line: #d9e0ea;
     --fg: #1b2430; --muted: #607085; --link: #1262c4; --up: #11803f; --up-bar: rgba(17, 128, 63, 0.14);
-    --down: #c2312f; --focus: #1262c4; color-scheme: light;
+    --down: #c2312f; --focus: #1262c4; --on-accent: #ffffff; color-scheme: light;
   }
 }
 :root[data-theme="light"] {
   --bg: #f3f5f8; --panel: #ffffff; --row-alt: #f8fafc; --row-hover: #e9eef5; --line: #d9e0ea;
   --fg: #1b2430; --muted: #607085; --link: #1262c4; --up: #11803f; --up-bar: rgba(17, 128, 63, 0.14);
-  --down: #c2312f; --focus: #1262c4; color-scheme: light;
+  --down: #c2312f; --focus: #1262c4; --on-accent: #ffffff; color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -95,6 +96,40 @@ a.tk:hover { text-decoration: underline; }
 .pager .goto { display: flex; align-items: center; gap: 6px; margin-left: 12px; color: var(--muted); }
 .pager input[type="number"] { width: 64px; }
 .pn { display: flex; align-items: center; gap: 4px; font-family: var(--font-num); color: var(--muted); }
+
+.runbox { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 0; }
+.runrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 12px; }
+button.primary { background: var(--link); border-color: var(--link); color: var(--on-accent); font-weight: 600; height: 32px; padding: 0 16px; }
+button.primary:hover:not(:disabled) { background: var(--link); filter: brightness(1.08); }
+#runstatus { font-size: 12px; color: var(--muted); font-family: var(--font-num); text-align: right; max-width: 52ch; }
+#runstatus:empty { display: none; }
+#runstatus[data-kind="err"] { color: var(--down); }
+#runstatus[data-kind="ok"] { color: var(--up); }
+#runstatus a, .setup a { color: var(--link); }
+
+.setup {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 4px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; max-width: 760px; font-size: 13px;
+}
+.setup-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setup h2 { margin: 0; font-size: 15px; font-weight: 600; text-wrap: balance; }
+.setup p, .setup ol { margin: 0; max-width: 68ch; }
+.setup ol { padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.setup b { font-weight: 600; }
+.setup form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.setup label { color: var(--muted); font-size: 12px; }
+.setup input[type="password"] {
+  font: 12px var(--font-num); color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 4px; height: 32px; padding: 0 8px; flex: 1 1 220px; min-width: 0;
+}
+.setup .note { color: var(--muted); font-size: 12px; }
+.setup .note[data-kind="err"] { color: var(--down); }
+
+@media (max-width: 640px) {
+  .runbox { align-items: flex-start; }
+  .runrow { justify-content: flex-start; }
+  #runstatus { text-align: left; }
+}
 </style>
 
 <div class="wrap">
@@ -103,8 +138,37 @@ a.tk:hover { text-decoration: underline; }
       <h1>Global Momentum Screen</h1>
       <p class="rules" id="rules"></p>
     </div>
-    <div class="asof" id="asof"></div>
+    <div class="runbox">
+      <div class="runrow">
+        <div class="asof" id="asof"></div>
+        <button type="button" class="primary" id="run" hidden>Run screen</button>
+      </div>
+      <div id="runstatus" role="status" aria-live="polite"></div>
+    </div>
   </div>
+
+  <section class="setup" id="setup" hidden aria-labelledby="setup-h">
+    <div class="setup-head">
+      <h2 id="setup-h">Run the screen from this page</h2>
+      <button type="button" id="setup-close" aria-label="Close">×</button>
+    </div>
+    <p>One tap starts a fresh run on GitHub, and the page reloads with the new results about a minute later.
+      For that, this browser needs a GitHub token that is allowed to run this repository's workflow.</p>
+    <ol>
+      <li>Open <a id="tok-new" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">GitHub's new fine-grained token page</a> and give the token a name and an expiration date.</li>
+      <li>Under <b>Repository access</b>, choose <b>Only select repositories</b> and pick <b id="repo-name"></b>.</li>
+      <li>Under <b>Permissions</b>, add <b>Actions</b> and set it to <b>Read and write</b>. Leave everything else as it is.</li>
+      <li>Generate the token, copy it and paste it here.</li>
+    </ol>
+    <form id="tok-form" autocomplete="off">
+      <label for="tok">Token</label>
+      <input id="tok" type="password" spellcheck="false" autocapitalize="off" placeholder="github_pat_…">
+      <button type="submit" class="primary">Save and run</button>
+      <button type="button" id="tok-forget" hidden>Remove saved token</button>
+    </form>
+    <p class="note" id="tok-msg">The token is saved only in this browser. Never put it in the repository or share it.</p>
+    <p class="note">Or <a id="wf-link" target="_blank" rel="noopener noreferrer">run it on GitHub</a> and reload this page when it finishes.</p>
+  </section>
 
   <div class="bar">
     <div class="count" id="count" aria-live="polite"></div>
@@ -269,7 +333,9 @@ function init() {
   const m = DATA.meta;
   $('rules').innerHTML =
     `Within <b>${m.max_below_high}%</b> of 52-week high · 1M performance &gt; <b>${m.min_perf}%</b> · volume &gt; <b>${m.min_volume.toLocaleString('en-US')}</b> · close &gt; <b>SMA20</b> and <b>SMA200</b>`;
-  $('asof').textContent = `Data pulled ${m.generated}`;
+  const when = new Date(m.generated);
+  $('asof').textContent = `Data pulled ${isNaN(when) ? m.generated
+    : when.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
   const counts = {};
   ROWS.forEach(r => counts[r.ex] = (counts[r.ex] || 0) + 1);
   Object.keys(counts).sort((a, b) => counts[b] - counts[a]).forEach(e => {
@@ -307,4 +373,165 @@ function init() {
   render();
 }
 init();
+
+// ---- Run button: starts the GitHub Actions workflow, follows it, reloads when the page is rebuilt ----
+const RUN = { repo: DATA.meta.repo, ref: DATA.meta.ref || 'main', wf: 'screener.yml', key: 'gh-run-token' };
+const sleep = ms => new Promise(res => setTimeout(res, ms));
+let memToken = '';
+const store = {
+  get() { try { return localStorage.getItem(RUN.key) || memToken; } catch { return memToken; } },
+  set(v) { memToken = v; try { localStorage.setItem(RUN.key, v); return true; } catch { return false; } },
+  del() { memToken = ''; try { localStorage.removeItem(RUN.key); } catch {} },
+};
+const wfUrl = () => `https://github.com/${RUN.repo}/actions/workflows/${RUN.wf}`;
+let busy = false, ticker = null, phase = '', phaseT0 = 0;
+
+function gh(path, opts = {}) {
+  const headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', Authorization: `Bearer ${store.get()}` };
+  if (opts.body) headers['Content-Type'] = 'application/json';
+  return fetch(`https://api.github.com/repos/${RUN.repo}${path}`, { ...opts, headers, cache: 'no-store' });
+}
+function say(msg, kind = '', href = '') {
+  const el = $('runstatus');
+  el.dataset.kind = kind;
+  el.innerHTML = esc(msg) + (href ? ` <a href="${esc(href)}" target="_blank" rel="noopener noreferrer">Open on GitHub</a>` : '');
+}
+function explain(status) {
+  if (status === 401) return 'GitHub rejected the token. It may have expired or been revoked, so set it up again.';
+  if (status === 403) return 'The token isn\'t allowed to run workflows. Give it Actions: Read and write.';
+  if (status === 404) return `The token can't see ${RUN.repo}. Give it access to that repository.`;
+  return `GitHub returned an error (${status}). Try again, or run it on GitHub.`;
+}
+const clock = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+function setPhase(text) { phase = text; say(`${phase}… ${clock(Math.round((Date.now() - phaseT0) / 1000))}`); }
+function startTicker(t0) {
+  phaseT0 = t0; clearInterval(ticker);
+  ticker = setInterval(() => { if (phase) setPhase(phase); }, 1000);
+}
+function stopTicker() { clearInterval(ticker); ticker = null; phase = ''; }
+function fail(msg, href = '') {
+  stopTicker(); busy = false; $('run').disabled = false; $('run').textContent = 'Run screen';
+  say(msg, 'err', href);
+}
+
+async function findRun(since) {
+  const r = await gh(`/actions/workflows/${RUN.wf}/runs?event=workflow_dispatch&per_page=5`);
+  if (!r.ok) throw r.status;
+  const j = await r.json();
+  return j.workflow_runs.find(x => Date.parse(x.created_at) >= since) || null;
+}
+async function waitForPage(deadline) {
+  while (Date.now() < deadline) {
+    try {
+      const html = await (await fetch(`${location.pathname}?t=${Date.now()}`, { cache: 'no-store' })).text();
+      const m = html.match(/"generated": "([^"]+)"/);
+      if (m && m[1] !== DATA.meta.generated) return true;
+    } catch {}
+    await sleep(6000);
+  }
+  return false;
+}
+
+async function follow(t0, known = null) {
+  busy = true; $('run').disabled = true; $('run').textContent = 'Running…';
+  startTicker(t0);
+  let run = known;
+  try {
+    const findBy = Date.now() + 90000;
+    while (!run) {
+      setPhase('Waiting for GitHub to start the run');
+      run = await findRun(t0 - 15000);
+      if (!run) {
+        if (Date.now() > findBy) return fail('GitHub accepted the request, but no run showed up.', wfUrl());
+        await sleep(4000);
+      }
+    }
+    const endBy = Date.now() + 12 * 60000;
+    while (run.status !== 'completed') {
+      setPhase(run.status === 'in_progress' ? 'Running the screen' : 'Waiting for GitHub to start the run');
+      if (Date.now() > endBy) return fail('The run is taking much longer than usual.', run.html_url);
+      await sleep(5000);
+      const r = await gh(`/actions/runs/${run.id}`);
+      if (!r.ok) return fail(explain(r.status));
+      run = await r.json();
+    }
+    if (run.conclusion !== 'success') {
+      return fail(run.conclusion === 'cancelled' ? 'The run was cancelled, usually because a newer run replaced it.'
+        : 'The run failed.', run.html_url);
+    }
+    setPhase('Publishing the page');
+    if (await waitForPage(Date.now() + 4 * 60000)) {
+      stopTicker(); say('Updated. Loading the new results…', 'ok');
+      location.replace(`${location.pathname}?v=${Date.now()}`);
+    } else {
+      fail('The run finished, but the page hasn\'t updated yet. Reload in a minute.', run.html_url);
+    }
+  } catch (e) {
+    fail(typeof e === 'number' ? explain(e) : 'Couldn\'t reach GitHub. Check your connection and try again.');
+  }
+}
+
+async function startRun() {
+  if (busy) return;
+  if (!store.get()) { openSetup(); return; }
+  closeSetup();
+  busy = true; $('run').disabled = true;
+  const t0 = Date.now();
+  say('Starting…');
+  let r;
+  try {
+    r = await gh(`/actions/workflows/${RUN.wf}/dispatches`, { method: 'POST', body: JSON.stringify({ ref: RUN.ref }) });
+  } catch {
+    return fail('Couldn\'t reach GitHub. Check your connection and try again.');
+  }
+  if (r.status !== 204) {
+    // token problems are explained inside the setup panel, where they can be fixed
+    if ([401, 403, 404].includes(r.status)) { fail(''); openSetup(explain(r.status)); return; }
+    return fail(explain(r.status));
+  }
+  follow(t0);
+}
+
+function openSetup(msg = '') {
+  $('setup').hidden = false;
+  $('tok-forget').hidden = !store.get();
+  const note = $('tok-msg');
+  note.dataset.kind = msg ? 'err' : '';
+  note.textContent = msg || 'The token is saved only in this browser. Never put it in the repository or share it.';
+  $('tok').focus();
+}
+function closeSetup() { $('setup').hidden = true; $('tok').value = ''; }
+
+async function resume() {
+  if (!store.get()) return;
+  try {
+    const r = await gh(`/actions/workflows/${RUN.wf}/runs?per_page=1`);
+    if (!r.ok) return;
+    const run = (await r.json()).workflow_runs[0];
+    if (run && run.status !== 'completed' && Date.now() - Date.parse(run.created_at) < 15 * 60000) {
+      follow(Date.parse(run.created_at), run);
+    }
+  } catch {}
+}
+
+if (RUN.repo && /^https?:$/.test(location.protocol)) {
+  if (/[?&]v=\d+/.test(location.search)) history.replaceState(null, '', location.pathname + location.hash);
+  $('run').hidden = false;
+  $('repo-name').textContent = RUN.repo;
+  $('wf-link').href = wfUrl();
+  $('run').addEventListener('click', startRun);
+  $('setup-close').addEventListener('click', closeSetup);
+  $('tok-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = $('tok').value.trim();
+    if (!v) { openSetup('Paste the token first.'); return; }
+    if (!store.set(v)) say('This browser won\'t keep the token after you close the page, so you\'ll need to paste it again next time.');
+    startRun();
+  });
+  $('tok-forget').addEventListener('click', () => {
+    store.del(); $('tok-forget').hidden = true;
+    openSetup('Removed. This browser no longer has a token.');
+  });
+  resume();
+}
 </script>
